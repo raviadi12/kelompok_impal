@@ -39,3 +39,10 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+  
+# LaTeX build files  
+*.aux  
+*.log  
+*.out  
+*.toc  
+lint_output.txt 

@@ -6,6 +6,7 @@ import { LogOut, MessageSquare, Pill, Plus, Calendar, FileText, AlertTriangle, L
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase/client";
+import ButtonBita from "@/components/ButtonBita";
 
 interface SidebarProps {
   isOpen: boolean;
@@ -34,9 +35,9 @@ export const Sidebar: React.FC<SidebarProps> = ({isOpen, setIsOpen, toggleSideba
     }
   }, [user]);
 
-  const handleLogout = () => {
-    logout();
-    router.push("/");
+  const handleLogout = async () => {
+    await logout();
+    router.push("/login");
   };
 
   const handleNewChat = async () => {
@@ -66,7 +67,6 @@ export const Sidebar: React.FC<SidebarProps> = ({isOpen, setIsOpen, toggleSideba
 
   return (
     <>
-
       {/* Overlay for mobile */}
       {isOpen && (
         <div

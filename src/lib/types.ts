@@ -58,3 +58,13 @@ export type Reminder = {
   waktu_kirim: string;
   status: boolean;
 };
+
+export type Schedule = {
+  id: string;
+  medicine_name: string;
+  dosage: string;
+  time: string;
+  date: string;
+  status: "pending" | "done" | "skipped";
+  user_id: string;
+};

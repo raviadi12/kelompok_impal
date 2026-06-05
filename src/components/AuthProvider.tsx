@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useState } from "react";
-import { createClient } from "@/lib/supabase/client";
+import { supabase } from "@/lib/supabase/client";
 import { Pasien } from "@/lib/types";
 import { User as SupabaseUser } from "@supabase/supabase-js";
 
@@ -17,8 +17,6 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<Pasien | null>(null);
   const [loading, setLoading] = useState(true);
-
-  const supabase = createClient();
 
   // Helper function to fetch full Pasien data from your table
   const loadPatientData = useCallback(
@@ -46,16 +44,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(null);
       }
     },
-    [supabase],
+    []
   );
 
   // Listen to Supabase auth state changes
   useEffect(() => {
+    let mounted = true;
+
     // Get initial session
     const getInitialSession = async () => {
       const {
         data: { session },
       } = await supabase.auth.getSession();
+      
+      if (!mounted) return;
+      
       if (session) {
         await loadPatientData(session.user);
       } else {
@@ -70,7 +73,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
-      console.log("Auth event:", event); // Helpful for debugging
+      // console.log("Auth event:", event); // Helpful for debugging
+      if (!mounted) return;
 
       if (session?.user) {
         await loadPatientData(session.user);
@@ -81,9 +85,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     });
 
     return () => {
+      mounted = false;
       subscription.unsubscribe();
     };
-  }, [loadPatientData, supabase.auth]);
+  }, [loadPatientData]);
 
   const login = (userData: Pasien) => {
     setUser(userData);

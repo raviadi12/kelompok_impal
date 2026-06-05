@@ -1,0 +1,154 @@
+\documentclass[12pt, a4paper]{article}
+\usepackage{fontspec}
+\setmainfont{Times New Roman}
+\usepackage[indonesian]{babel}
+\usepackage{microtype}
+\usepackage[top=2.5cm, bottom=2.5cm, left=3cm, right=2.5cm]{geometry}
+\usepackage{parskip}
+\usepackage{graphicx}
+\usepackage{hyperref}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{tabularx}
+\usepackage{pgfplots}
+\usepackage{float}
+\pgfplotsset{compat=1.18}
+
+\setlength{\parindent}{0pt}
+
+% Konfigurasi agar teks panjang (termasuk output terminal) bisa di-wrap dan tidak overlap (overfull hbox)
+\lstset{
+    basicstyle=\ttfamily\footnotesize,
+    breaklines=true,
+    breakatwhitespace=true,
+    postbreak=\mbox{\textcolor{red}{$\hookrightarrow$}\space},
+    frame=single,
+    numbers=left,
+    numberstyle=\tiny,
+    captionpos=b,
+    xleftmargin=1em,
+    xrightmargin=1em
+}
+
+\begin{document}
+
+\begin{titlepage}
+  \centering
+  \vspace*{1cm}
+  
+  % Masukkan Logo Telkom University di bagian atas
+  \includegraphics[width=4.5cm]{telkom.png}\par
+  \vspace{1.5cm}
+  
+  {\LARGE\bfseries LAPORAN EVALUASI METRIK KOMPLEKSITAS (OO METER)\par}
+  \vspace{1cm}
+  {\large \textit{Aplikasi Obibi: Pengingat Jadwal Obat Pintar}\par}
+  \vspace{2.5cm}
+  
+  {\normalsize\bfseries Dipersiapkan oleh:\par}
+  \vspace{0.5cm}
+  {\normalsize
+    Najla Tsabita Afiyah (103012400305)\\[4pt]
+    Revalina Rasyidin (103012400156)\\[4pt]
+    Ravi Adi Prakoso (103012430058)\\[4pt]
+    Muhammad Ahsan Raziq Sulthany (103012430067)\par
+  }
+  \vspace{1.5cm}
+  {\normalsize
+    Program Studi S1 Informatika\\
+    Fakultas Informatika\\
+    Universitas Telkom\\[4pt]
+    2026\par
+  }
+  \vfill
+\end{titlepage}
+
+\tableofcontents
+\newpage
+
+\section{Pendahuluan}
+Aplikasi berbasis antarmuka modern yang dikembangkan dengan framework Next.js dan pustaka React lebih mengedepankan arsitektur \textit{Functional Programming} alih-alih \textit{Object-Oriented Programming} (OOP) murni. Oleh karena itu, perangkat ukur \textit{Object-Oriented Metrics} standar (seperti LCOM, WMC, DIT) urung memberikan hasil numerik yang relevan secara presisi untuk hierarki komponen yang dominan fungsinya.
+
+Sebagai pendekatan yang lebih akurat untuk beradaptasi pada lingkungan proyek \textit{TypeScript/React} ini, analisis kualitas dan desain perangkat lunak dieksekusi menggunakan perangkat evaluasi \textbf{ESLint} yang memuat \textit{plugin} \textbf{SonarJS}. Alat ukur ini secara komprehensif mengkalkulasi indikasi kualitas kode kotor (\textit{Code Smells}), tingkat kompleksitas kognitif kondisional (\textit{Cognitive Complexity}), dan praktik keamanan rentan yang rawan menyita utang teknis (\textit{Technical Debt}).
+
+\section{Ikhtisar Hasil Uji (Tabel \& Grafik)}
+Berdasarkan proses rabaan \textit{linter} pada baris perintah, terkumpul beberapa deteksi penurunan metrik efisiensi dan \textit{style}. Hasil ini dipaparkan ke dalam daftar tabulasi dan grafik agar profil kompleksitas dapat dengan mudah diringkas.
+
+\begin{table}[H]
+    \centering
+    \begin{tabularx}{\textwidth}{|l|X|c|c|}
+        \hline
+        \textbf{Kategori \textit{Rule}} & \textbf{Deskripsi Pelanggaran / Implikasi} & \textbf{Jumlah} & \textbf{Status} \\ \hline
+        \texttt{no-nested-conditional} & Terlalu banyak percabangan kondisi bersarang secara \textit{inline}, menaikkan tingkat beban kompleksitas kognitif saat perampingan UI. & 9 & Error \\ \hline
+        \texttt{class-name} & Penamaan turunan \textit{Class} di model \textit{class\_diagram.js} menggunakan konvensi salah (bukan standar kaidah \textit{PascalCase}). & 4 & Error \\ \hline
+        \texttt{no-commented-code} & Adanya deret blok memori komentar \textit{debugging} masa lalu yang mendistorsi kebersihan halaman dan siap dikirim (\textit{production}). & 2 & Error \\ \hline
+        \texttt{pseudo-random} & Pemanfaatan algoritma angka bilangan acak yang tidak mutlak dan dikhawatirkan dapat diantisipasi/diretas perlindungan polanya. & 1 & Error \\ \hline
+        \texttt{unused-import} & Impor komponen dan definisi entitas luaran yang terdaftar tanpa adanya korelasi penggunaan fungsional nyata di bawahnya. & 1 & Error \\ \hline
+    \end{tabularx}
+    \caption{Rangkuman Jumlah Isu Metrik Berdasarkan Kaidah Penilaian Kode (SonarJS)}
+\end{table}
+
+\begin{figure}[H]
+    \centering
+    \begin{tikzpicture}
+        \begin{axis}[
+            ybar,
+            symbolic x coords={Nested Cond, Class Name, Cmmented Code, Randomizer, Unused Var},
+            xtick=data,
+            nodes near coords,
+            nodes near coords align={vertical},
+            ymin=0, ymax=11,
+            ylabel={Total Frekuensi (\textit{Hits})},
+            xlabel={Kategori Pelanggaran Linter},
+            width=14cm,
+            height=8cm,
+            x tick label style={rotate=15,anchor=east},
+            bar width=1cm
+        ]
+        \addplot[fill=blue!30!white, draw=blue!80!black] coordinates {
+            (Nested Cond, 9)
+            (Class Name, 4)
+            (Cmmented Code, 2)
+            (Randomizer, 1)
+            (Unused Var, 1)
+        };
+        \end{axis}
+    \end{tikzpicture}
+    \caption{Grafik Batang Distribusi Jumlah Isu Metrik dan Desain Kompleksitas}
+\end{figure}
+
+\section{Log Validasi Konsol Terminal}
+Berikut ini merupakan lampiran potongan \textit{log} data konsol sewaktu pengujian sintaks berlalu. Konfigurasi telah disesuaikan agar tulisan panjang dapat beralih otomatis ke garis di bawahnya (\textit{word warp}), menghindari terhimpit atau mencuat \textit{overlap} ke margin penulisan luar batas:
+
+\begin{lstlisting}[language=bash, caption={Cuplikan Ekstraksi Evaluasi Kelayakan di Terminal}]
+> kelompok_impal@0.1.0 lint
+> eslint
+
+C:\Users\user\Documents...\src\app\(dashboard)\jadwal-obat\page.tsx
+  415:33  error  Extract this nested ternary operation into an independent statement   sonarjs/no-nested-conditional
+
+C:\Users\user\Documents...\src\app\(dashboard)\laporan-kepatuhan\page.tsx
+  65:50   error  Extract this nested ternary operation into an independent statement   sonarjs/no-nested-conditional
+  65:71   error  Extract this nested ternary operation into an independent statement   sonarjs/no-nested-conditional
+  108:31  error  Make sure that using this pseudorandom number generator is safe here  sonarjs/pseudo-random
+
+C:\Users\user\Documents...\src\app\api\models\class_diagram.js
+  29:7    error  Rename class "AI_Assistant" to match the regular expression ^\$?[A-Z][a-zA-Z0-9]*$    sonarjs/class-name
+  53:7    error  Rename class "Laporan_kepatuhan" to match the regular expression ^\$?[A-Z][a-zA-Z0-9]*$  sonarjs/class-name
+\end{lstlisting}
+
+\section{Transkrip Elaborasi Evaluasi Metrik Kompleksitas}
+Mensintesis dari tabel agregat profil maupun rekam jejak konsol, beberapa parameter berikut amat memerlukan rekonsiliasi karena mencoreng kredibilitas dan membebani skema pengerjaan sistem (\textit{maintainability}):
+
+\begin{enumerate}
+    \item \textbf{Abnormalitas Indeks \textit{Cognitive Complexity}:} Frekuensi pelanggaran \textit{logical} tertinggi didapati pada file fungsional kompleks yang diatur UI interaktif (\textit{Jadwal Obat} dan \textit{Laporan Kepatuhan}). Keberadaan \textit{nested ternary operators / conditional hooks} yang dimuat rapat di dalam sela tag JSX memicu peningkatan dramatis dari nilai \textit{Cyclomatic Complexity}. File setebal itu mestinya dikemasi menembus pecahan \textit{sub-folder component} baru untuk mencapai batas ideal OOP/Toleransi.
+    
+    \item \textbf{Penamaan \textit{Class} Bebas di Modul Non-TypeScript:} Di berkas \textit{Class Diagram} lama yang diorientasikan bergaya OOP murni, standar pendefinisian entitas sangat merujuk pada pedoman. Pengadopsian gaya format variabel \texttt{snake\_case\_style} tidak lazim ditolerir terhadap sebuah subyek entitas kelas dan menodai kesesuaian gaya. Entitas semisal \texttt{Laporan\_kepatuhan} perlu dimodifikasi sebagai abstraksi \texttt{LaporanKepatuhan}.
+    
+    \item \textbf{Sampah Pemrograman Tersisa:} \textit{Dead Code} berbentuk jejak-jejak \textit{import} hantu maupun perburuan celat (\textit{commented code snippets}) berisiko mencuri porsi performa muat atau mengakali memori produksi dan mesti dilenyapkan pada iterasi berikutnya (\textit{Sprint Planning}).
+\end{enumerate}
+
+\section{Kesimpulan}
+Pembangunan kerangka pementasan basis proyek secara fungsional dinilai sukses berputar. Kendati demikian, skor evaluasi \textit{meter} sintaksis ketersusunan logika operasional proyek masih terjebak pada ambang kerisauan tinggi karena minim abstraksi komponen. Disarankan agar dilakukan tahapan \textit{Clean-Code Refactoring} sedini mungkin guna meremajakan modul-modul ini menjelang uji pergerakan peluncuran stabil proyek selanjutnya.
+
+\end{document}

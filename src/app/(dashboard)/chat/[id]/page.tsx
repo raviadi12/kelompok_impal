@@ -2,15 +2,18 @@
 
 import { useAuth } from "@/components/AuthProvider";
 import { supabase } from "@/lib/supabase/client";
-import { Send, User as UserIcon, Bot } from "lucide-react";
+import { Send, User as UserIcon, Bot, Paperclip, X } from "lucide-react";
 // import { useRouter } from "next/navigation";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, use } from "react";
 
-export default function ChatSessionPage({ params }: { params: { id: string } }) {
+export default function ChatSessionPage({ params }: { params: Promise<{ id: string }> }) {
   const { user } = useAuth();
+  const { id } = use(params);
   // const router = useRouter();
   const [chatLog, setChatLog] = useState<string[]>([]);
   const [input, setInput] = useState("");
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [loading, setLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -22,7 +25,7 @@ export default function ChatSessionPage({ params }: { params: { id: string } }) 
       const { data, error } = await supabase
         .from("chat")
         .select("chat")
-        .eq("chat_id", Number(params.id))
+        .eq("chat_id", Number(id))
         .single();
 
       if (!error && data) {
@@ -32,7 +35,7 @@ export default function ChatSessionPage({ params }: { params: { id: string } }) 
     };
 
     fetchChat();
-  }, [params.id, user]);
+  }, [id, user]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -40,13 +43,17 @@ export default function ChatSessionPage({ params }: { params: { id: string } }) 
 
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!input.trim() || sending) return;
+    if ((!input.trim() && !selectedImage) || sending) return;
 
-    const userText = input.trim();
-    const updatedLogUser = [...chatLog, `User: ${userText}`];
+    const userText = input.trim() || "[Gambar]";
+    // Append [IMAGE] indicator in chat log if there's an image
+    const logText = selectedImage ? `User: ${userText}\n[Gambar Terlampir]` : `User: ${userText}`;
+    const updatedLogUser = [...chatLog, logText];
     
     setChatLog(updatedLogUser);
     setInput("");
+    const imageToSend = selectedImage;
+    setSelectedImage(null);
     setSending(true);
 
     try {
@@ -56,8 +63,9 @@ export default function ChatSessionPage({ params }: { params: { id: string } }) 
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ 
-          chatId: params.id, 
+          chatId: id, 
           message: userText,
+          imageBase64: imageToSend,
           history: updatedLogUser.map(msg => {
             const isUser = msg.startsWith("User:");
             return {
@@ -71,7 +79,27 @@ export default function ChatSessionPage({ params }: { params: { id: string } }) 
       if (!res.ok) throw new Error("API error");
       const resData = await res.json();
       
-      const aiText = resData.text;
+      let aiText = resData.text;
+
+      // Handle extracted actions to insert into database
+      if (resData.extractedActions && resData.extractedActions.length > 0) {
+        for (const action of resData.extractedActions) {
+          if (action.action === "add to reminder database") {
+            const timeToSet = new Date();
+            // Just saving an outline to jadwal_obat
+            await supabase.from("jadwal_obat").insert([{
+              pasien_id: user?.id,
+              nama_obat: action.description?.substring(0, 50) || "Obat dari Chat",
+              jenis_obat: "Pill",
+              dosis: action.frequency,
+              waktu_minum: timeToSet.toISOString()
+            }]);
+          }
+        }
+        
+        aiText += "\n\n*(Sistem: Agen telah menambahkan obat di atas ke dalam Database Jadwal Obat Anda)*";
+      }
+
       const updatedLogAI = [...updatedLogUser, `AI: ${aiText}`];
 
       setChatLog(updatedLogAI);
@@ -80,13 +108,24 @@ export default function ChatSessionPage({ params }: { params: { id: string } }) 
       await supabase
         .from("chat")
         .update({ chat: updatedLogAI, respon_ai: aiText })
-        .eq("chat_id", Number(params.id));
+        .eq("chat_id", Number(id));
 
     } catch (err) {
       console.error("Failed", err);
       alert("Gagal mengirim pesan");
     } finally {
       setSending(false);
+    }
+  };
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setSelectedImage(reader.result as string);
+      };
+      reader.readAsDataURL(file);
     }
   };
 
@@ -144,7 +183,32 @@ export default function ChatSessionPage({ params }: { params: { id: string } }) 
       </div>
 
       <div className="border-t border-gray-200 p-4 bg-white">
-        <form onSubmit={handleSend} className="max-w-4xl mx-auto flex gap-2">
+        {selectedImage && (
+          <div className="max-w-4xl mx-auto mb-2 relative inline-block">
+            <img src={selectedImage} alt="Preview" className="h-20 rounded-lg object-cover border border-gray-200" />
+            <button
+              onClick={() => setSelectedImage(null)}
+              className="absolute -top-2 -right-2 bg-red-500 text-white rounded-full p-1 hover:bg-red-600"
+            >
+              <X size={14} />
+            </button>
+          </div>
+        )}
+        <form onSubmit={handleSend} className="max-w-4xl mx-auto flex gap-2 items-center">
+          <button
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
+            className="text-gray-500 hover:text-blue-600 p-2"
+          >
+            <Paperclip size={24} />
+          </button>
+          <input
+            type="file"
+            accept="image/*"
+            ref={fileInputRef}
+            onChange={handleImageChange}
+            className="hidden"
+          />
           <input
             type="text"
             value={input}
@@ -155,7 +219,7 @@ export default function ChatSessionPage({ params }: { params: { id: string } }) 
           />
           <button
             type="submit"
-            disabled={sending || !input.trim()}
+            disabled={sending || (!input.trim() && !selectedImage)}
             className="bg-blue-600 text-white rounded-full w-12 h-12 flex items-center justify-center hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition"
           >
             <Send size={20} />
