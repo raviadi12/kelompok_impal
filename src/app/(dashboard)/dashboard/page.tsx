@@ -14,28 +14,28 @@ export default function DashboardPage() {
       <div className="max-w-6xl mx-auto space-y-8">
         {/* Welcome Section */}
         <div className="bg-white rounded-3xl p-8 border border-gray-100 shadow-sm">
-          <h1 className="text-3xl font-bold text-gray-900 mb-2">Selamat datang, {user.name}! 👋</h1>
-          <p className="text-gray-500 text-lg">Pantau jadwal dan kepatuhan minum obat Anda agar selalu sehat dan bugar.</p>
+          <h1 className="text-3xl font-bold text-gray-900 mb-2">Welcome back, {user.name}! 👋</h1>
+          <p className="text-gray-500 text-lg">Monitor your medication schedule and adherence to stay healthy and fit.</p>
         </div>
 
-        {/* Halo AI Banner */}
+        {/* Hello AI Banner */}
         <div className="bg-gradient-to-r from-blue-600 to-indigo-600 rounded-3xl p-8 text-white shadow-md relative overflow-hidden">
           <div className="relative z-10 md:w-2/3">
             <div className="inline-flex items-center gap-2 px-3 py-1 bg-white/20 rounded-full text-sm font-medium mb-4 backdrop-blur-sm border border-white/30">
               <Bot size={16} />
-              <span>Halo AI - Asisten Kesehatan Anda</span>
+              <span>Hello AI - Your Health Assistant</span>
             </div>
             <h2 className="text-2xl md:text-3xl font-bold mb-4 leading-tight">
-              Punya pertanyaan seputar obat Anda?
+              Have questions about your medicine?
             </h2>
             <p className="text-blue-100 mb-6 text-lg">
-              Tanyakan indikasi, efek samping, dosis, atau bagikan gambar resep Anda langsung ke Halo AI!
+              Ask about indications, side effects, dosage, or share your prescription images directly with Hello AI!
             </p>
             <Link 
               href="/chat"
               className="inline-flex items-center gap-2 bg-white text-blue-600 px-6 py-3 rounded-xl font-bold hover:bg-blue-50 transition shadow-sm"
             >
-              Mulai Chat Sekarang
+              Start Chatting Now
               <ArrowRight size={20} />
             </Link>
           </div>
@@ -48,24 +48,24 @@ export default function DashboardPage() {
             <div className="w-14 h-14 bg-teal-50 text-teal-600 rounded-2xl flex items-center justify-center mb-4 group-hover:bg-teal-600 group-hover:text-white transition">
               <Calendar size={28} />
             </div>
-            <h3 className="text-xl font-bold text-gray-900 mb-2">Jadwal Hari Ini</h3>
-            <p className="text-gray-500">Lihat dan atur pengingat jadwal minum obat Anda.</p>
+            <h3 className="text-xl font-bold text-gray-900 mb-2">Today's Schedule</h3>
+            <p className="text-gray-500">View and manage your medication intake reminders.</p>
           </Link>
           
           <Link href="/obat" className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm hover:shadow-md transition group">
             <div className="w-14 h-14 bg-purple-50 text-purple-600 rounded-2xl flex items-center justify-center mb-4 group-hover:bg-purple-600 group-hover:text-white transition">
               <Pill size={28} />
             </div>
-            <h3 className="text-xl font-bold text-gray-900 mb-2">Daftar Obat</h3>
-            <p className="text-gray-500">Kelola inventaris obat-obatan yang sedang Anda konsumsi.</p>
+            <h3 className="text-xl font-bold text-gray-900 mb-2">Medication List</h3>
+            <p className="text-gray-500">Manage the inventory of medications you are currently taking.</p>
           </Link>
           
           <Link href="/interaksi-obat" className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm hover:shadow-md transition group">
             <div className="w-14 h-14 bg-rose-50 text-rose-600 rounded-2xl flex items-center justify-center mb-4 group-hover:bg-rose-600 group-hover:text-white transition">
               <AlertTriangle size={28} />
             </div>
-            <h3 className="text-xl font-bold text-gray-900 mb-2">Cek Interaksi</h3>
-            <p className="text-gray-500">Periksa potensi interaksi berbahaya antara obat Anda.</p>
+            <h3 className="text-xl font-bold text-gray-900 mb-2">Check Interactions</h3>
+            <p className="text-gray-500">Check for potential harmful interactions between your medications.</p>
           </Link>
         </div>
       </div>

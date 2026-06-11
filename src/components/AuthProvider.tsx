@@ -1,24 +1,25 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useState, useRef } from "react";
 import { supabase } from "@/lib/supabase/client";
-import { Pasien } from "@/lib/types";
+import { Patient } from "@/lib/types";
 import { User as SupabaseUser } from "@supabase/supabase-js";
 
 type AuthContextType = {
-  user: Pasien | null;
+  user: Patient | null;
   loading: boolean;
-  login: (userData: Pasien) => void; // kept for backward compatibility if needed
+  login: (userData: Patient) => void; // kept for backward compatibility if needed
   logout: () => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<Pasien | null>(null);
+  const [user, setUser] = useState<Patient | null>(null);
   const [loading, setLoading] = useState(true);
+  const initRef = useRef(false);
 
-  // Helper function to fetch full Pasien data from your table
+  // Helper function to fetch full Patient data from your table
   const loadPatientData = useCallback(
     async (supabaseUser: SupabaseUser) => {
       try {
@@ -29,15 +30,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           .single();
 
         if (error) {
-          console.error("Error fetching pasien data:", error);
+          console.error("Error fetching patient data:", error);
           // Update fallback to use 'name' instead of 'nama'
           setUser({
             id: supabaseUser.id,
             email: supabaseUser.email!,
             name: supabaseUser.user_metadata?.name || supabaseUser.email?.split("@")[0] || "",
-          }); // Use 'any' if the Pasien type hasn't been updated yet
+          }); 
         } else {
-          setUser(patientData); // This object will now have 'name' from the DB
+          setUser(patientData); 
         }
       } catch (err) {
         console.error("Unexpected error loading patient data:", err);
@@ -50,49 +51,58 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   // Listen to Supabase auth state changes
   useEffect(() => {
     let mounted = true;
+    let authSubscription: any = null;
 
-    // Get initial session
-    const getInitialSession = async () => {
-      const {
-        data: { session },
-      } = await supabase.auth.getSession();
+    const initializeAuth = async () => {
+      console.log('[AuthProvider] Initializing auth with supabase client:', !!supabase);
+      // Prevent strict mode rapid re-firing of getSession
+      if (initRef.current) return;
+      initRef.current = true;
       
-      if (!mounted) return;
-      
-      if (session) {
-        await loadPatientData(session.user);
-      } else {
-        setUser(null);
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!mounted) return;
+        
+        if (session) {
+          await loadPatientData(session.user);
+        } else {
+          setUser(null);
+        }
+      } catch (err) {
+        console.warn("Ignored Auth getSession error", err);
+      } finally {
+        if (mounted) setLoading(false);
       }
-      setLoading(false);
+
+      // ONLY subscribe after getSession completes to avoid concurrent Storage Locks!
+      if (!mounted) return;
+      const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+        if (!mounted) return;
+        if (event === "INITIAL_SESSION") return; // We already fetched it
+
+        if (session?.user) {
+          await loadPatientData(session.user);
+        } else {
+          setUser(null);
+        }
+      });
+      authSubscription = subscription;
     };
 
-    getInitialSession();
-
-    // Subscribe to auth changes (login, logout, token refresh, etc.)
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (event, session) => {
-      // console.log("Auth event:", event); // Helpful for debugging
-      if (!mounted) return;
-
-      if (session?.user) {
-        await loadPatientData(session.user);
-      } else {
-        setUser(null);
-      }
-      setLoading(false);
-    });
+    initializeAuth();
 
     return () => {
       mounted = false;
-      subscription.unsubscribe();
+      if (authSubscription) {
+        authSubscription.unsubscribe();
+      }
     };
   }, [loadPatientData]);
 
-  const login = (userData: Pasien) => {
+  const login = (userData: Patient) => {
     setUser(userData);
   };
+
 
   const logout = async () => {
     await supabase.auth.signOut();

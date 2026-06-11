@@ -1,15 +1,21 @@
-export type Pasien = {
+export type Patient = {
   id: string; // auth.users.id
   name: string;
   email: string;
+  avatar_url?: string;
 };
 
-export type Obat = {
-  obat_id: number;
-  nama_obat: string;
-  keterangan: string;
-  dosis: string;
-  efek_samping: string;
+export type Medication = {
+  id: string;
+  patient_id: string;
+  name: string;
+  description: string;
+  dosage: string;
+  side_effects: string;
+  form: string;
+  stock_quantity: number;
+  stock_unit: string;
+  is_active: boolean;
 };
 
 export type AIAssistant = {
@@ -19,37 +25,50 @@ export type AIAssistant = {
 };
 
 export type Chat = {
-  chat_id: number;
-  pasien_id: string;
-  ai_id: number;
-  chat: string[];
-  respon_ai: string;
-  waktu: string;
+  id: string;
+  patient_id: string;
+  ai_id?: number;
+  title: string;
+  created_at: string;
 };
 
-export type InteraksiObat = {
-  interaksi_id: number;
-  pasien_id: string;
-  obat1: string[];
-  obat2: string;
-  tingkat_risiko: string;
-  hasil_interaksi: string;
+export type ChatMessage = {
+  id: string;
+  chat_id: string;
+  role: 'user' | 'assistant' | 'system';
+  content: string;
+  created_at: string;
+  metadata?: any;
 };
 
-export type LaporanKepatuhan = {
-  laporan_id: number;
-  pasien_id: string;
-  tanggal: string;
-  status_kepatuhan: string;
+export type DrugInteraction = {
+  id: string;
+  patient_id: string;
+  medication_pair: string[];
+  target_medication: string;
+  risk_level: string;
+  finding_details: string;
 };
 
-export type JadwalObat = {
-  jadwal_id: number;
-  laporan_id: number;
-  nama_obat: string;
-  jenis_obat: string;
-  waktu_minum: string;
-  dosis: string;
+export type ComplianceLog = {
+  id: string;
+  schedule_id: string;
+  patient_id: string;
+  status: 'taken' | 'skipped' | 'missed' | 'snoozed';
+  logged_at: string;
+  notes?: string;
+};
+
+export type MedicationSchedule = {
+  id: string;
+  patient_id: string;
+  medication_id: string;
+  scheduled_time: string;
+  dosage_quantity: number;
+  dosage_unit: string;
+  start_date: string;
+  end_date?: string;
+  instructions?: string;
 };
 
 export type Reminder = {
@@ -59,6 +78,7 @@ export type Reminder = {
   status: boolean;
 };
 
+// Legacy support or UI specific types
 export type Schedule = {
   id: string;
   medicine_name: string;

@@ -5,7 +5,7 @@ import { useAuth } from "@/components/AuthProvider";
 import { supabase } from "@/lib/supabase/client";
 import { useEffect, useState } from "react";
 
-export default function LaporanKepatuhanPage() {
+export default function ComplianceLogsPage() {
   const { user } = useAuth();
   
   // Real data state
@@ -15,97 +15,79 @@ export default function LaporanKepatuhanPage() {
 
   useEffect(() => {
     if (user) {
-      fetchLaporanData();
+      fetchComplianceData();
     }
   }, [user]);
 
-  const fetchLaporanData = async () => {
+  const fetchComplianceData = async () => {
     try {
       setLoading(true);
       // Fetch user's schedules
-      const { data: jadwalData } = await supabase
-        .from("jadwal_obat")
-        .select("*")
-        .eq("pasien_id", user?.id)
-        .order("waktu_minum", { ascending: true });
+      const { data: scheduleData } = await supabase
+        .from("medication_schedules")
+        .select("*, medications(name)")
+        .eq("patient_id", user?.id)
+        .order("scheduled_time", { ascending: true });
 
       // Generate today's schedule based on frequency
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       const generatedToday: any[] = [];
 
-      (jadwalData || []).forEach(s => {
-        const dosis = (s.dosis || "").toLowerCase();
-        let hours = [new Date(s.waktu_minum).getHours() || 8];
+      (scheduleData || []).forEach(s => {
+        const dosageInfo = (s.dosage_quantity || "").toString();
+        // For simplicity, we assume the scheduled_time is what we use
+        let hours = [parseInt(s.scheduled_time.split(":")[0]) || 8];
         let appliesToThisDay = true;
 
-        const startDate = new Date(s.waktu_minum);
+        const startDate = new Date(s.start_date);
         startDate.setHours(0, 0, 0, 0);
         
         if (today < startDate) return;
 
-        if (dosis.includes("3x sehari") || dosis.includes("3x_every_day")) {
-          hours = [8, 13, 20];
-        } else if (dosis.includes("2x sehari") || dosis.includes("2x_every_day")) {
-          hours = [8, 20];
-        } else if (dosis.includes("1x sehari") || dosis.includes("1x_every_day")) {
-          hours = [new Date(s.waktu_minum).getHours() || 8];
-        }
-
-        const isSeminggu = dosis.includes("seminggu") || dosis.includes("a_week");
-        if (isSeminggu) {
-          const d = today.getDay();
-          if (dosis.includes("3x")) appliesToThisDay = [1, 3, 5].includes(d);
-          else if (dosis.includes("2x")) appliesToThisDay = [1, 4].includes(d);
-          else if (dosis.includes("1x")) appliesToThisDay = [startDate.getDay()].includes(d);
-        }
-
+        // Custom frequency logic can be added here
+        
         if (appliesToThisDay) {
           hours.forEach(hr => {
-            const timeLabel = hr < 11 ? "Pagi" : hr <= 15 ? "Siang" : hr <= 18 ? "Sore" : "Malam";
+            const timeLabel = hr < 11 ? "Morning" : hr <= 15 ? "Afternoon" : hr <= 18 ? "Evening" : "Night";
             generatedToday.push({
-              id: `${s.jadwal_id}-${hr}`, // using composite id for uniqueness per time
-              jadwal_id: s.jadwal_id,
-              name: s.nama_obat,
-              dosage: s.dosis,
+              id: `${s.id}-${hr}`, // using composite id for uniqueness per time
+              schedule_id: s.id,
+              name: s.medications?.name || "Unknown",
+              dosage: `${s.dosage_quantity} ${s.dosage_unit}`,
               time: `${timeLabel} (${String(hr).padStart(2, "0")}:00)`,
               uniqueHour: hr,
-              status: "pending" // Default, will update based on laporan_kepatuhan
+              status: "pending" 
             });
           });
         }
       });
 
-      // Fetch kepatuhan status for today
+      // Fetch compliance status for today
       const todayStr = new Date().toISOString().split("T")[0];
-      const { data: kepatuhanData } = await supabase
-        .from("laporan_kepatuhan")
+      const { data: complianceData } = await supabase
+        .from("compliance_logs")
         .select("*")
-        .eq("pasien_id", user?.id)
-        .gte("tanggal", todayStr + "T00:00:00Z");
+        .eq("patient_id", user?.id)
+        .gte("logged_at", todayStr + "T00:00:00Z");
 
-      if (kepatuhanData && kepatuhanData.length > 0) {
-        // If a status is recorded, mark them in generatedToday
-        // In real app, you might want to link kepatuhan back to schedule parts
-        // For simplicity, we match by storing jadwal_id in status_kepatuhan JSON or parse it.
-        const statuses = kepatuhanData.map(k => {
-          try { return JSON.parse(k.status_kepatuhan); } catch { return []; }
-        }).flat();
-        
-        generatedToday.forEach(med => {
-          if (statuses.includes(med.id)) med.status = "taken";
+      if (complianceData && complianceData.length > 0) {
+        // Match status based on some logic (this depends on how you store status in DB)
+        // For now, let's assume 'status' column stores 'taken' if any record exists for that schedule
+        complianceData.forEach(log => {
+          const med = generatedToday.find(m => m.schedule_id === log.schedule_id);
+          if (med && log.status === 'taken') med.status = "taken";
         });
       }
 
       setTodayMedicines(generatedToday.sort((a,b) => a.uniqueHour - b.uniqueHour));
 
-      // Generate dummy chart data or read past 7 days 
-      // (Using dummy structure but dynamic dates for realism as history might not exist yet)
+      // Generate dummy chart data
       const mockChart = Array.from({length: 7}, (_, i) => {
         const d = new Date(); d.setDate(d.getDate() - (6 - i));
         return {
-          date: d.toLocaleDateString("id-ID", { day: "numeric", month: "short" }),
-          percent: Math.floor(Math.random() * 40) + 60 // Random 60-100%
+          date: d.toLocaleDateString("en-US", { day: "numeric", month: "short" }),
+          percent: Math.floor(Math.random() * 40) + 60 
         };
       });
       setChartData(mockChart);
@@ -117,40 +99,21 @@ export default function LaporanKepatuhanPage() {
     }
   };
 
-  const markAsTaken = async (medId: string) => {
+  const markAsTaken = async (med: any) => {
     if (!user) return;
     try {
       // Optimistic update
-      setTodayMedicines(prev => prev.map(m => m.id === medId ? { ...m, status: "taken" } : m));
+      setTodayMedicines(prev => prev.map(m => m.id === med.id ? { ...m, status: "taken" } : m));
 
-      // 1. Get today's record
-      const todayStr = new Date().toISOString().split("T")[0];
-      const { data: existing } = await supabase
-        .from("laporan_kepatuhan")
-        .select("*")
-        .eq("pasien_id", user.id)
-        .gte("tanggal", todayStr + "T00:00:00Z")
-        .single();
-      
-      let takenList = [medId];
-
-      if (existing) {
-        let current = [];
-        try { current = JSON.parse(existing.status_kepatuhan); } catch {}
-        takenList = [...new Set([...current, medId])];
+      await supabase
+        .from("compliance_logs")
+        .insert([{
+          patient_id: user.id,
+          schedule_id: med.schedule_id,
+          status: 'taken',
+          logged_at: new Date().toISOString()
+        }]);
         
-        await supabase
-          .from("laporan_kepatuhan")
-          .update({ status_kepatuhan: JSON.stringify(takenList) })
-          .eq("laporan_id", existing.laporan_id);
-      } else {
-        await supabase
-          .from("laporan_kepatuhan")
-          .insert([{
-            pasien_id: user.id,
-            status_kepatuhan: JSON.stringify(takenList)
-          }]);
-      }
     } catch (err) {
       console.error("Failed to mark as taken", err);
     }
@@ -162,23 +125,20 @@ export default function LaporanKepatuhanPage() {
     <div className="flex-1 p-6 lg:p-8 overflow-y-auto bg-gray-50/50">
       <div className="max-w-4xl mx-auto space-y-8">
         
-        {/* Header */}
         <div>
-          <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Laporan Kepatuhan</h1>
-          <p className="text-gray-500 mt-2">Pantau tingkat kepatuhan minum obat Anda setiap hari.</p>
+          <h1 className="text-3xl font-bold text-gray-900 tracking-tight">Compliance Reports</h1>
+          <p className="text-gray-500 mt-2">Monitor your daily medication adherence levels.</p>
         </div>
 
-        {/* Chart Card */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 lg:p-8">
           <div className="flex items-center justify-between mb-8">
             <h2 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
               <TrendingUp className="w-5 h-5 text-blue-500" />
-              Analisis 7 hari terakhir patuh minum obat
+              Adherence Analysis (Last 7 Days)
             </h2>
           </div>
           
           <div className="relative h-64 w-full mt-4">
-            {/* Y-axis labels */}
             <div className="absolute left-0 top-0 bottom-8 w-12 flex flex-col justify-between text-xs text-gray-400 text-right pr-4">
               <span>100%</span>
               <span>75%</span>
@@ -187,27 +147,16 @@ export default function LaporanKepatuhanPage() {
               <span>0%</span>
             </div>
             
-            {/* Chart Area */}
             <div className="absolute left-12 right-0 top-0 bottom-8 flex justify-between items-end gap-2 border-l border-b border-gray-200 pb-1">
-              {/* Horizontal grid lines */}
               <div className="absolute left-0 right-0 bottom-0 top-0 flex flex-col justify-between pointer-events-none">
                 {[...Array(5)].map((_, i) => (
                   <div key={i} className="w-full border-t border-gray-100 border-dashed" />
                 ))}
               </div>
 
-              {/* Bars */}
               {chartData.map((item, index) => (
                 <div key={index} className="relative flex flex-col items-center w-full group z-10 h-full justify-end">
-                  {/* Tooltip on Hover */}
-                  <div className="absolute -top-10 bg-gray-800 text-white text-xs py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none whitespace-nowrap z-20">
-                    {item.percent}% Patuh
-                  </div>
-                  
-                  {/* Percentage above bar */}
                   <span className="text-xs font-medium text-gray-600 mb-2">{item.percent}%</span>
-                  
-                  {/* Bar */}
                   <div 
                     className={`w-full max-w-[3rem] rounded-t-md transition-all duration-500 hover:opacity-80
                       ${item.percent >= 80 ? 'bg-gradient-to-t from-green-500 to-green-400' : 
@@ -219,7 +168,6 @@ export default function LaporanKepatuhanPage() {
               ))}
             </div>
             
-            {/* X-axis labels */}
             <div className="absolute left-12 right-0 bottom-0 h-8 flex justify-between items-end pt-2">
               {chartData.map((item, index) => (
                 <div key={index} className="w-full text-center text-xs text-gray-500 font-medium truncate px-1">
@@ -230,12 +178,11 @@ export default function LaporanKepatuhanPage() {
           </div>
         </div>
 
-        {/* Medications List Card */}
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 lg:p-8">
           <div className="flex items-center justify-between mb-6">
             <h2 className="text-xl font-semibold text-gray-800 flex items-center gap-2">
               <AlertCircle className="w-5 h-5 text-orange-500" />
-              Obat yang harus di minum hari ini:
+              Medications to take today:
             </h2>
           </div>
           
@@ -244,7 +191,7 @@ export default function LaporanKepatuhanPage() {
               <Loader className="w-6 h-6 animate-spin text-blue-500" />
             </div>
           ) : todayMedicines.length === 0 ? (
-            <div className="text-center p-8 text-gray-500">Tidak ada jadwal obat untuk hari ini.</div>
+            <div className="text-center p-8 text-gray-500">No medications scheduled for today.</div>
           ) : (
             <div className="space-y-4">
               {todayMedicines.map((med) => (
@@ -262,7 +209,7 @@ export default function LaporanKepatuhanPage() {
                 </div>
                 
                 <button 
-                  onClick={() => med.status !== 'taken' && markAsTaken(med.id)}
+                  onClick={() => med.status !== 'taken' && markAsTaken(med)}
                   className={`flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg font-medium text-sm transition-all duration-200 shrink-0
                     ${med.status === 'taken' 
                       ? 'bg-green-50 text-green-700 border border-green-200 cursor-default' 
@@ -271,12 +218,12 @@ export default function LaporanKepatuhanPage() {
                   {med.status === 'taken' ? (
                     <>
                       <CheckCircle2 className="w-4 h-4" />
-                      Sudah diminum
+                      Taken
                     </>
                   ) : (
                     <>
                       <Circle className="w-4 h-4" />
-                      Tandai sudah minum
+                      Mark as taken
                     </>
                   )}
                 </button>

@@ -6,7 +6,6 @@ import { LogOut, MessageSquare, Pill, Plus, Calendar, FileText, AlertTriangle, L
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase/client";
-import ButtonBita from "@/components/ButtonBita";
 
 interface SidebarProps {
   isOpen: boolean;
@@ -17,19 +16,18 @@ interface SidebarProps {
 export const Sidebar: React.FC<SidebarProps> = ({isOpen, setIsOpen, toggleSidebar}) => {
   const { user, logout } = useAuth();
   const router = useRouter();
-  const [chats, setChats] = useState<{ chat_id: number }[]>([]);
-  const [isCollapsed, setIsCollapsed] = useState(false); // Desktop collapse
+  const [chats, setChats] = useState<{ id: string }[]>([]);
+  const [isCollapsed, setIsCollapsed] = useState(false);
   
-  // Fetch chats
   useEffect(() => {
     if (user) {
       const fetchChats = async () => {
         const { data } = await supabase
-          .from("chat")
-          .select("chat_id")
-          .eq("pasien_id", user.id)
-          .order("waktu", { ascending: false });
-        if (data) setChats(data);
+          .from("chats")
+          .select("id, title")
+          .eq("patient_id", user.id)
+          .order("created_at", { ascending: false });
+        if (data) setChats(data.map((item: any) => ({ id: item.id })));
       };
       fetchChats();
     }
@@ -44,9 +42,9 @@ export const Sidebar: React.FC<SidebarProps> = ({isOpen, setIsOpen, toggleSideba
     if (!user) return;
 
     const { data, error } = await supabase
-      .from("chat")
-      .insert([{ pasien_id: user.id, chat: [] }])
-      .select("chat_id")
+      .from("chats")
+      .insert([{ patient_id: user.id, title: "New Conversation" }])
+      .select("id")
       .single();
 
     if (error) {
@@ -55,9 +53,9 @@ export const Sidebar: React.FC<SidebarProps> = ({isOpen, setIsOpen, toggleSideba
     }
 
     if (data) {
-      setChats([{ chat_id: data.chat_id }, ...chats]);
-      router.push(`/chat/${data.chat_id}`);
-      setIsOpen(false); // close mobile menu after action
+      setChats([{ id: data.id }, ...chats]);
+      router.push(`/chat/${data.id}`);
+      setIsOpen(false);
     }
   };
 
@@ -67,7 +65,6 @@ export const Sidebar: React.FC<SidebarProps> = ({isOpen, setIsOpen, toggleSideba
 
   return (
     <>
-      {/* Overlay for mobile */}
       {isOpen && (
         <div
           className="lg:hidden fixed inset-0 bg-black/50 z-40"
@@ -75,7 +72,6 @@ export const Sidebar: React.FC<SidebarProps> = ({isOpen, setIsOpen, toggleSideba
         />
       )}
 
-      {/* Sidebar */}
       <div
         className={`
           fixed lg:static inset-y-0 left-0 z-50 
@@ -85,7 +81,6 @@ export const Sidebar: React.FC<SidebarProps> = ({isOpen, setIsOpen, toggleSideba
           ${isCollapsed ? "lg:w-20" : "lg:w-64"}
         `}
       >
-        {/* Header */}
         <div className="p-4 border-b border-gray-200 flex items-center justify-between">
           <div className={`flex items-center gap-3 ${isCollapsed ? "justify-center" : ""}`}>
             <div className="w-8 h-8 bg-blue-600 rounded-xl flex items-center justify-center">
@@ -99,7 +94,6 @@ export const Sidebar: React.FC<SidebarProps> = ({isOpen, setIsOpen, toggleSideba
             )}
           </div>
 
-          {/* Collapse Button - Desktop only */}
           <button
             onClick={toggleCollapse}
             className="hidden lg:block p-1.5 hover:bg-gray-200 rounded-lg transition"
@@ -108,7 +102,6 @@ export const Sidebar: React.FC<SidebarProps> = ({isOpen, setIsOpen, toggleSideba
           </button>
         </div>
 
-        {/* New Chat Button */}
         <div className="p-4">
           <button
             onClick={handleNewChat}
@@ -119,14 +112,13 @@ export const Sidebar: React.FC<SidebarProps> = ({isOpen, setIsOpen, toggleSideba
           </button>
         </div>
 
-        {/* Navigation */}
         <nav className="flex-1 overflow-y-auto px-3 py-2 space-y-1">
           {[
             { href: "/dashboard", icon: LayoutDashboard, label: "Dashboard" },
-            { href: "/obat", icon: Pill, label: "Obat" },
-            { href: "/jadwal-obat", icon: Calendar, label: "Jadwal Obat" },
-            { href: "/laporan-kepatuhan", icon: FileText, label: "Laporan Kepatuhan" },
-            { href: "/interaksi-obat", icon: AlertTriangle, label: "Interaksi Obat" },
+            { href: "/obat", icon: Pill, label: "Medications" },
+            { href: "/jadwal-obat", icon: Calendar, label: "Schedule" },
+            { href: "/laporan-kepatuhan", icon: FileText, label: "Compliance" },
+            { href: "/interaksi-obat", icon: AlertTriangle, label: "Interactions" },
           ].map(({ href, icon: Icon, label }) => (
             <Link
               key={href}
@@ -139,7 +131,6 @@ export const Sidebar: React.FC<SidebarProps> = ({isOpen, setIsOpen, toggleSideba
             </Link>
           ))}
 
-          {/* Chat History */}
           {!isCollapsed && (
             <div className="pt-6 pb-2 px-4 text-xs font-semibold text-gray-400 uppercase tracking-wider">
               Chat History
@@ -149,19 +140,18 @@ export const Sidebar: React.FC<SidebarProps> = ({isOpen, setIsOpen, toggleSideba
           <div className="space-y-1">
             {chats.map((c) => (
               <Link
-                key={c.chat_id}
-                href={`/chat/${c.chat_id}`}
+                key={c.id}
+                href={`/chat/${c.id}`}
                 onClick={() => setIsOpen(false)}
                 className={`flex items-center gap-3 px-4 py-3 text-gray-700 rounded-xl hover:bg-gray-100 transition text-sm ${isCollapsed ? "justify-center" : ""}`}
               >
                 <MessageSquare size={18} />
-                {!isCollapsed && <span className="truncate">Chat #{c.chat_id}</span>}
+                {!isCollapsed && <span className="truncate">Chat #{c.id.substring(0, 8)}</span>}
               </Link>
             ))}
           </div>
         </nav>
 
-        {/* Logout */}
         <div className="p-4 border-t border-gray-200">
           <button
             onClick={handleLogout}

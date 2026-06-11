@@ -43,10 +43,9 @@ export default function LoginPage() {
 
       router.push("/dashboard");
       router.refresh();
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      // CHANGE THIS: Show the actual error message to debug the trigger failure
-      setError("Authentication failed.");
+      setError(err.message || "Authentication failed.");
     } finally {
       setIsLoading(false);
     }

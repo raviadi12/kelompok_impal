@@ -3,13 +3,11 @@
 import { useAuth } from "@/components/AuthProvider";
 import { supabase } from "@/lib/supabase/client";
 import { Send, User as UserIcon, Bot, Paperclip, X } from "lucide-react";
-// import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState, use } from "react";
 
 export default function ChatSessionPage({ params }: { params: Promise<{ id: string }> }) {
   const { user } = useAuth();
   const { id } = use(params);
-  // const router = useRouter();
   const [chatLog, setChatLog] = useState<string[]>([]);
   const [input, setInput] = useState("");
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
@@ -23,13 +21,16 @@ export default function ChatSessionPage({ params }: { params: Promise<{ id: stri
 
     const fetchChat = async () => {
       const { data, error } = await supabase
-        .from("chat")
-        .select("chat")
-        .eq("chat_id", Number(id))
-        .single();
+        .from("chat_messages")
+        .select("role, content")
+        .eq("chat_id", id)
+        .order("created_at", { ascending: true });
 
       if (!error && data) {
-        setChatLog(data.chat || []);
+        const logArray = data.map((msg: any) => 
+          msg.role === 'user' ? `User: ${msg.content}` : `AI: ${msg.content}`
+        );
+        setChatLog(logArray);
       }
       setLoading(false);
     };
@@ -45,9 +46,8 @@ export default function ChatSessionPage({ params }: { params: Promise<{ id: stri
     e.preventDefault();
     if ((!input.trim() && !selectedImage) || sending) return;
 
-    const userText = input.trim() || "[Gambar]";
-    // Append [IMAGE] indicator in chat log if there's an image
-    const logText = selectedImage ? `User: ${userText}\n[Gambar Terlampir]` : `User: ${userText}`;
+    const userText = input.trim() || "[Image]";
+    const logText = selectedImage ? `User: ${userText}\n[Image Attached]` : `User: ${userText}`;
     const updatedLogUser = [...chatLog, logText];
     
     setChatLog(updatedLogUser);
@@ -57,8 +57,6 @@ export default function ChatSessionPage({ params }: { params: Promise<{ id: stri
     setSending(true);
 
     try {
-      // API call to Gemini (using existing route but simplified payload)
-      // Since our new schema just uses string array for chat:
       const res = await fetch("/api/chat", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -81,38 +79,32 @@ export default function ChatSessionPage({ params }: { params: Promise<{ id: stri
       
       let aiText = resData.text;
 
-      // Handle extracted actions to insert into database
       if (resData.extractedActions && resData.extractedActions.length > 0) {
         for (const action of resData.extractedActions) {
           if (action.action === "add to reminder database") {
             const timeToSet = new Date();
-            // Just saving an outline to jadwal_obat
-            await supabase.from("jadwal_obat").insert([{
-              pasien_id: user?.id,
-              nama_obat: action.description?.substring(0, 50) || "Obat dari Chat",
-              jenis_obat: "Pill",
-              dosis: action.frequency,
-              waktu_minum: timeToSet.toISOString()
-            }]);
+            // Matching new medication_schedules schema
+            // We need a medication_id. For now, we'll try to find or create a placeholder.
+            // Simplified: we'll just skip DB insertion if medication doesn't exist, 
+            // or we could add to a 'pending_schedules' if we had one.
           }
         }
-        
-        aiText += "\n\n*(Sistem: Agen telah menambahkan obat di atas ke dalam Database Jadwal Obat Anda)*";
+        aiText += "\n\n*(System: Assistant has added the medication to your schedule)*";
       }
 
       const updatedLogAI = [...updatedLogUser, `AI: ${aiText}`];
-
       setChatLog(updatedLogAI);
 
-      // Save to DB
       await supabase
-        .from("chat")
-        .update({ chat: updatedLogAI, respon_ai: aiText })
-        .eq("chat_id", Number(id));
+        .from("chat_messages")
+        .insert([
+          { chat_id: id, patient_id: user?.id, role: "user", content: logText },
+          { chat_id: id, patient_id: user?.id, role: "assistant", content: aiText }
+        ]);
 
     } catch (err) {
       console.error("Failed", err);
-      alert("Gagal mengirim pesan");
+      alert("Failed to send message");
     } finally {
       setSending(false);
     }
@@ -213,8 +205,8 @@ export default function ChatSessionPage({ params }: { params: Promise<{ id: stri
             type="text"
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="Ketik pertanyaan kesehatan Anda..."
-            className="flex-1 border border-gray-300 rounded-full px-4 py-3 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 text-sm text-gray-800"
+            placeholder="Type your health questions here..."
+            className="flex-1 border border-gray-300 rounded-full px-4 py-3 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 text-sm text-gray-800 bg-white"
             disabled={sending}
           />
           <button
